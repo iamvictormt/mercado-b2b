@@ -1,0 +1,3 @@
+- Reuse `PanelExit` across both visual panels for the confirmed logout action; it must terminate the server session before navigating to `/auth`.
+- Share storefront navigation, footer, locale preference and product presentation through `src/components/storefront.tsx` so the home, catalogue and machine-request pages stay consistent.
+- Access PostgreSQL only through the server-side Prisma client in `src/lib/prisma.ts`; never import it from a Client Component.
