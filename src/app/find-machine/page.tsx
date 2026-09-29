@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 
 import FindMachinePage from "@/routes/find-machine";
+import { getStorefrontViewer } from "@/server/auth";
+
+export const dynamic = "force-dynamic";
 
 const description =
   "Descreva o equipamento que procura, indique quantidade, orçamento e prazo, e peça uma pesquisa personalizada.";
@@ -15,6 +18,6 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
-  return <FindMachinePage />;
+export default async function Page() {
+  return <FindMachinePage viewer={await getStorefrontViewer()} />;
 }

@@ -12,11 +12,27 @@ import {
   Plus,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { StoreFooter, StoreHeader, useStoreLocale } from "@/components/storefront";
+import {
+  FavoriteButton,
+  StoreFooter,
+  StoreHeader,
+  type StorefrontViewer,
+  useProductFavorites,
+  useStoreLocale,
+} from "@/components/storefront";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { formatMoney, type Product } from "@/lib/products";
 
 const copy = {
@@ -30,6 +46,7 @@ const copy = {
     min: "Encomenda mínima",
     quantity: "Quantidade pretendida",
     quote: "Pedir cotação",
+    manageProduct: "Gerir este produto",
     requesting: "A enviar pedido...",
     total: "Total indicativo",
     note: "Transporte, alfândega e condições finais são confirmados na cotação.",
@@ -43,6 +60,17 @@ const copy = {
     deliveredNote: "Acompanhamos transporte, documentação e desalfandegamento.",
     login: "Inicie sessão para pedir uma cotação.",
     success: "Pedido de cotação criado com sucesso.",
+    confirmTitle: "Confirmar pedido de cotação",
+    confirmIntro:
+      "Revise a quantidade e, se necessário, acrescente uma observação para a nossa equipa.",
+    notes: "Observações para a cotação",
+    notesPlaceholder:
+      "Ex.: voltagem preferida, condições de entrega ou características específicas…",
+    optional: "Opcional",
+    send: "Enviar pedido",
+    successTitle: "Pedido recebido.",
+    successNote: "A equipa irá analisar o pedido e atualizar o estado na sua área de cliente.",
+    track: "Acompanhar cotação",
   },
   en: {
     back: "Back to catalogue",
@@ -54,6 +82,7 @@ const copy = {
     min: "Minimum order",
     quantity: "Required quantity",
     quote: "Request a quote",
+    manageProduct: "Manage this product",
     requesting: "Sending request...",
     total: "Indicative total",
     note: "Shipping, customs and final terms are confirmed in the quote.",
@@ -67,6 +96,15 @@ const copy = {
     deliveredNote: "We manage shipping, documentation and customs clearance.",
     login: "Sign in to request a quote.",
     success: "Quote request created successfully.",
+    confirmTitle: "Confirm quote request",
+    confirmIntro: "Review the quantity and add any useful information for our team.",
+    notes: "Quote notes",
+    notesPlaceholder: "E.g. preferred voltage, delivery terms or specific requirements…",
+    optional: "Optional",
+    send: "Send request",
+    successTitle: "Request received.",
+    successNote: "Our team will review it and update the status in your customer area.",
+    track: "Track quote",
   },
 };
 
@@ -75,11 +113,22 @@ async function responseError(response: Response) {
   return body?.error ?? "Não foi possível concluir o pedido.";
 }
 
-export default function ProductPage({ product }: { product: Product }) {
+export default function ProductPage({
+  product,
+  viewer,
+}: {
+  product: Product;
+  viewer: StorefrontViewer | null;
+}) {
+  const router = useRouter();
   const { locale, changeLocale } = useStoreLocale();
   const [quantity, setQuantity] = useState(product.minQty);
   const [requesting, setRequesting] = useState(false);
+  const [quoteOpen, setQuoteOpen] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [createdQuote, setCreatedQuote] = useState<string | null>(null);
   const t = copy[locale];
+  const favorites = useProductFavorites(viewer, locale);
   const money = (value: number) => formatMoney(value, locale, product.currency);
 
   const requestQuote = async () => {
@@ -88,11 +137,25 @@ export default function ProductPage({ product }: { product: Product }) {
       const response = await fetch("/api/quotes", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ items: [{ productId: product.id, quantity }] }),
+        body: JSON.stringify({
+          items: [{ productId: String(product.id), quantity }],
+          notes: notes.trim() || null,
+        }),
       });
 
-      if (response.status === 401) throw new Error(t.login);
+      if (response.status === 401) {
+        toast.info(t.login);
+        router.push(`/auth?next=${encodeURIComponent(`/product/${product.id}`)}`);
+        return;
+      }
+      if (response.status === 409) {
+        toast.info(await responseError(response));
+        router.push(`/account/company?next=${encodeURIComponent(`/product/${product.id}`)}`);
+        return;
+      }
       if (!response.ok) throw new Error(await responseError(response));
+      const body = (await response.json()) as { quote: { number: string } };
+      setCreatedQuote(body.quote.number);
       toast.success(t.success);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível pedir a cotação.");
@@ -109,7 +172,7 @@ export default function ProductPage({ product }: { product: Product }) {
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-background text-foreground">
-      <StoreHeader locale={locale} onLocaleChange={changeLocale} />
+      <StoreHeader locale={locale} onLocaleChange={changeLocale} viewer={viewer} />
 
       <section className="border-b border-border bg-store-paper pt-20 lg:bg-card">
         <div className="mx-auto grid min-h-[calc(100vh-5rem)] max-w-[1500px] lg:grid-cols-[1.08fr_.92fr]">
@@ -123,11 +186,8 @@ export default function ProductPage({ product }: { product: Product }) {
             </Link>
 
             <div className="absolute left-6 top-20 hidden text-[9px] uppercase tracking-[.26em] text-muted-foreground sm:block lg:left-16">
-              {String(product.featured).padStart(2, "0")} / {product.categoryName[locale]}
+              {product.categoryName[locale]}
             </div>
-            <div className="absolute size-[76%] max-h-[680px] max-w-[680px] rounded-full border border-border/70 bg-store-mint/70" />
-            <div className="absolute inset-y-0 left-1/2 w-px bg-border/50" />
-            <div className="absolute inset-x-0 top-1/2 h-px bg-border/50" />
             <img
               src={product.image.src}
               alt={product.name[locale]}
@@ -142,13 +202,26 @@ export default function ProductPage({ product }: { product: Product }) {
 
           <div className="relative flex items-center bg-card px-6 py-14 after:absolute after:inset-y-0 after:left-full after:w-screen after:bg-card sm:px-12 lg:px-16 xl:px-20">
             <div className="w-full max-w-xl">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="bg-foreground px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[.18em] text-background">
-                  {product.categoryName[locale]}
-                </span>
-                <span className="text-[9px] font-medium uppercase tracking-[.22em] text-muted-foreground">
-                  {t.overline}
-                </span>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="bg-foreground px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[.18em] text-background">
+                    {product.categoryName[locale]}
+                  </span>
+                  <span className="text-[9px] font-medium uppercase tracking-[.22em] text-muted-foreground">
+                    {t.overline}
+                  </span>
+                </div>
+                {viewer?.role !== "ADMIN" && (
+                  <FavoriteButton
+                    productId={String(product.id)}
+                    locale={locale}
+                    favorite={favorites.favoriteIds.has(String(product.id))}
+                    pending={favorites.pendingIds.has(String(product.id))}
+                    loading={favorites.loading}
+                    appearance="inline"
+                    onToggle={favorites.toggleFavorite}
+                  />
+                )}
               </div>
 
               <h1 className="mt-7 max-w-xl text-4xl font-light leading-[1.02] sm:text-5xl xl:text-6xl">
@@ -225,14 +298,28 @@ export default function ProductPage({ product }: { product: Product }) {
                       <Plus />
                     </Button>
                   </div>
-                  <Button
-                    onClick={() => void requestQuote()}
-                    disabled={requesting}
-                    className="h-13 rounded-none text-[10px] uppercase tracking-[.18em]"
-                  >
-                    {requesting ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}
-                    {requesting ? t.requesting : t.quote}
-                  </Button>
+                  {viewer?.role === "ADMIN" ? (
+                    <Button
+                      asChild
+                      className="h-13 rounded-none text-[10px] uppercase tracking-[.18em]"
+                    >
+                      <Link href="/admin/products">
+                        <ArrowRight />
+                        {t.manageProduct}
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => {
+                        setCreatedQuote(null);
+                        setQuoteOpen(true);
+                      }}
+                      className="h-13 rounded-none text-[10px] uppercase tracking-[.18em]"
+                    >
+                      <ArrowRight />
+                      {t.quote}
+                    </Button>
+                  )}
                 </div>
                 <div className="mt-4 flex items-center justify-between gap-4 text-xs">
                   <span className="text-muted-foreground">{t.total}</span>
@@ -245,6 +332,108 @@ export default function ProductPage({ product }: { product: Product }) {
           </div>
         </div>
       </section>
+
+      <Dialog
+        open={quoteOpen}
+        onOpenChange={(open) => {
+          if (requesting) return;
+          setQuoteOpen(open);
+          if (!open) {
+            setCreatedQuote(null);
+            setNotes("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-xl gap-0 rounded-none border-border p-0">
+          {createdQuote ? (
+            <div className="p-7 text-center sm:p-10">
+              <span className="mx-auto grid size-16 place-items-center rounded-full bg-store-mint">
+                <CheckCircle2 className="size-7 text-primary" />
+              </span>
+              <DialogHeader className="mt-6 text-center sm:text-center">
+                <DialogTitle className="font-display text-4xl font-normal italic">
+                  {t.successTitle}
+                </DialogTitle>
+                <DialogDescription className="mx-auto mt-2 max-w-sm leading-6">
+                  {t.successNote}
+                </DialogDescription>
+              </DialogHeader>
+              <p className="mt-6 text-[10px] uppercase tracking-[.22em] text-muted-foreground">
+                {createdQuote}
+              </p>
+              <Button asChild className="mt-7 h-12 rounded-none px-7">
+                <Link href="/account/quotes">
+                  {t.track} <ArrowRight />
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="border-b border-border bg-store-paper p-6 sm:p-8">
+                <p className="text-[10px] uppercase tracking-[.24em] text-muted-foreground">
+                  {product.categoryName[locale]}
+                </p>
+                <DialogHeader className="mt-3">
+                  <DialogTitle className="font-display text-4xl font-normal italic">
+                    {t.confirmTitle}
+                  </DialogTitle>
+                  <DialogDescription className="max-w-md leading-6">
+                    {t.confirmIntro}
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+
+              <div className="p-6 sm:p-8">
+                <div className="flex items-center gap-4">
+                  <div className="size-20 shrink-0 overflow-hidden bg-store-mint">
+                    <img
+                      src={product.image.src}
+                      alt=""
+                      className="size-full object-contain mix-blend-multiply"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{product.name[locale]}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {quantity} × {money(product.price)}
+                    </p>
+                  </div>
+                  <strong className="font-display text-2xl font-normal italic">
+                    {money(product.price * quantity)}
+                  </strong>
+                </div>
+
+                <Textarea
+                  label={
+                    <span className="flex items-center justify-between gap-3">
+                      {t.notes}
+                      <span className="font-normal text-muted-foreground">{t.optional}</span>
+                    </span>
+                  }
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  maxLength={5000}
+                  rows={4}
+                  placeholder={t.notesPlaceholder}
+                  className="mt-7"
+                />
+
+                <div className="mt-7 flex items-center justify-between gap-4 border-t border-border pt-5">
+                  <p className="max-w-xs text-[10px] leading-5 text-muted-foreground">{t.note}</p>
+                  <Button
+                    onClick={() => void requestQuote()}
+                    disabled={requesting}
+                    className="h-12 shrink-0 rounded-none px-6 text-[10px] uppercase tracking-[.16em]"
+                  >
+                    {requesting ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}
+                    {requesting ? t.requesting : t.send}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <section className="mx-auto max-w-[1500px] px-5 py-20 sm:px-10 lg:px-16 lg:py-24">
         <div className="grid gap-10 lg:grid-cols-[.72fr_1.28fr]">
@@ -270,10 +459,6 @@ export default function ProductPage({ product }: { product: Product }) {
               </article>
             ))}
           </div>
-        </div>
-        <div className="mt-14 flex items-center gap-3 border-t border-border pt-6 text-xs text-muted-foreground">
-          <CheckCircle2 className="size-4 text-primary" />
-          {t.note}
         </div>
       </section>
 

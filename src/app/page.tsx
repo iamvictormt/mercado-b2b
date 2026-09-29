@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import Storefront from "@/routes/index";
+import { getStorefrontViewer } from "@/server/auth";
 import { listActiveProducts, toStoreProduct } from "@/server/repositories/products";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,6 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const products = (await listActiveProducts()).map(toStoreProduct);
-  return <Storefront products={products} />;
+  const [records, viewer] = await Promise.all([listActiveProducts(), getStorefrontViewer()]);
+  return <Storefront products={records.map(toStoreProduct)} viewer={viewer} />;
 }

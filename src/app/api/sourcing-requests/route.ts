@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   const originError = validateMutationOrigin(request);
   if (originError) return originError;
 
-  const auth = await requireApiUser();
+  const auth = await requireApiUser("CUSTOMER");
   if (!auth.ok) return auth.response;
   if (!auth.user.company) {
     return apiError("Preencha os dados da empresa antes de enviar um pedido.", 409);

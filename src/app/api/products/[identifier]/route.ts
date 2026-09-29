@@ -73,7 +73,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     if (input.descriptionEn !== undefined) data.descriptionEn = input.descriptionEn;
     if (input.detailPt !== undefined) data.detailPt = nullableText(input.detailPt) ?? null;
     if (input.detailEn !== undefined) data.detailEn = nullableText(input.detailEn) ?? null;
-    if (input.category !== undefined) data.category = input.category;
+    if (input.categorySlug !== undefined) {
+      data.category = { connect: { slug: input.categorySlug } };
+    }
     if (input.status !== undefined) data.status = input.status;
     if (input.price !== undefined) data.price = input.price.toFixed(2);
     if (input.currency !== undefined) data.currency = input.currency;
@@ -87,7 +89,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     if (input.imageUrl !== undefined) data.imageUrl = nullableText(input.imageUrl) ?? null;
     if (input.imagePublicId !== undefined)
       data.imagePublicId = nullableText(input.imagePublicId) ?? null;
-    if (input.featuredOrder !== undefined) data.featuredOrder = input.featuredOrder;
+    if (input.featured !== undefined) data.featuredOrder = input.featured ? 1 : 0;
 
     if (data.slug === "") return apiError("O slug não pode ficar vazio.", 400);
 
@@ -113,6 +115,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   } catch (error) {
     if (hasErrorCode(error, "P2002")) {
       return apiError("Já existe um produto com este slug.", 409);
+    }
+    if (hasErrorCode(error, "P2025") || hasErrorCode(error, "P2003")) {
+      return apiError("A categoria selecionada já não existe.", 400);
     }
     console.error("Falha ao atualizar produto", error);
     return apiError("Não foi possível atualizar o produto.", 500);

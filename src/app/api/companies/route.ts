@@ -51,8 +51,25 @@ export async function GET(request: Request) {
       prisma.company.count({ where }),
     ]);
 
+    const quoteTotals = items.length
+      ? await prisma.quote.groupBy({
+          by: ["companyId", "currency"],
+          where: { companyId: { in: items.map((company) => company.id) } },
+          orderBy: [{ companyId: "asc" }, { currency: "asc" }],
+          _sum: { totalAmount: true },
+        })
+      : [];
+
     return Response.json({
-      items,
+      items: items.map((company) => ({
+        ...company,
+        quoteTotals: quoteTotals
+          .filter((total) => total.companyId === company.id)
+          .map((total) => ({
+            currency: total.currency,
+            total: Number(total._sum?.totalAmount ?? 0),
+          })),
+      })),
       pagination: { page, pageSize, total, pageCount: Math.ceil(total / pageSize) },
     });
   } catch (error) {

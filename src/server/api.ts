@@ -12,7 +12,7 @@ export function validateMutationOrigin(request: Request) {
   return isSameOrigin(request) ? null : apiError("Origem da requisição inválida.", 403);
 }
 
-export async function requireApiUser(role?: "ADMIN") {
+export async function requireApiUser(role?: "ADMIN" | "CUSTOMER") {
   const user = await getCurrentUser();
 
   if (!user) {

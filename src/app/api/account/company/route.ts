@@ -25,7 +25,7 @@ const companySelect = {
 } as const;
 
 export async function GET() {
-  const auth = await requireApiUser();
+  const auth = await requireApiUser("CUSTOMER");
   if (!auth.ok) return auth.response;
 
   try {
@@ -45,7 +45,7 @@ export async function PUT(request: Request) {
   const originError = validateMutationOrigin(request);
   if (originError) return originError;
 
-  const auth = await requireApiUser();
+  const auth = await requireApiUser("CUSTOMER");
   if (!auth.ok) return auth.response;
 
   try {

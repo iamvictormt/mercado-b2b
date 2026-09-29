@@ -91,7 +91,12 @@ export default function AuthPage() {
       }
 
       toast.success(isSignup ? "Conta criada com sucesso." : "Sessão iniciada.");
-      router.replace(result.user.role === "ADMIN" ? "/admin" : "/account");
+      const requestedNext = new URLSearchParams(window.location.search).get("next");
+      const safeNext =
+        requestedNext?.startsWith("/") && !requestedNext.startsWith("//") ? requestedNext : null;
+      router.replace(
+        safeNext ?? (result.user.role === "ADMIN" ? "/admin/summary" : "/account/quotes"),
+      );
       router.refresh();
     } catch {
       toast.error("Não foi possível comunicar com o servidor.");

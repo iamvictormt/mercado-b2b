@@ -2,7 +2,7 @@ import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import type { Product, ProductCategory } from "@/lib/products";
+import type { Product } from "@/lib/products";
 
 export const publicProductSelect = {
   id: true,
@@ -13,7 +13,13 @@ export const publicProductSelect = {
   descriptionEn: true,
   detailPt: true,
   detailEn: true,
-  category: true,
+  category: {
+    select: {
+      slug: true,
+      namePt: true,
+      nameEn: true,
+    },
+  },
   price: true,
   currency: true,
   originPt: true,
@@ -32,23 +38,13 @@ export const publicProductSelect = {
 
 type PublicProduct = Prisma.ProductGetPayload<{ select: typeof publicProductSelect }>;
 
-const categoryNames: Record<ProductCategory, Product["categoryName"]> = {
-  office: { pt: "Escritórios", en: "Offices" },
-  print: { pt: "Gráficas e comunicação", en: "Print & communication" },
-  agro: { pt: "Agro-negócios", en: "Agribusiness" },
-  business: { pt: "Pequenos negócios", en: "Small businesses" },
-  other: { pt: "Outros", en: "Other" },
-};
-
 export function toStoreProduct(product: PublicProduct): Product {
-  const category = product.category.toLowerCase() as ProductCategory;
-
   return {
     id: product.id,
     slug: product.slug,
     name: { pt: product.namePt, en: product.nameEn },
-    category,
-    categoryName: categoryNames[category],
+    category: product.category.slug,
+    categoryName: { pt: product.category.namePt, en: product.category.nameEn },
     image: {
       src: product.imageUrl ?? "/product-placeholder.svg",
       width: 1200,
@@ -62,7 +58,7 @@ export function toStoreProduct(product: PublicProduct): Product {
     leadTime: { pt: product.leadTimePt, en: product.leadTimeEn },
     minQty: product.minQuantity,
     unit: { pt: product.unitPt, en: product.unitEn },
-    featured: product.featuredOrder,
+    featured: product.featuredOrder > 0,
   };
 }
 

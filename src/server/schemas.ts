@@ -9,7 +9,6 @@ const currency = z
 const imageUrl = z.string().trim().url().max(2048).nullable().optional();
 const imagePublicId = z.string().trim().min(1).max(255).nullable().optional();
 
-export const productCategories = ["OFFICE", "PRINT", "AGRO", "BUSINESS", "OTHER"] as const;
 export const productStatuses = ["DRAFT", "ACTIVE", "ARCHIVED"] as const;
 export const quoteStatuses = [
   "REQUESTED",
@@ -36,7 +35,12 @@ export const productSchema = z.object({
   descriptionEn: z.string().trim().min(10).max(10000),
   detailPt: nullableText(255),
   detailEn: nullableText(255),
-  category: z.enum(productCategories),
+  categorySlug: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Categoria inválida."),
   status: z.enum(productStatuses).default("DRAFT"),
   price: z.coerce.number().finite().nonnegative().max(9999999999.99),
   currency: currency.default("EUR"),
@@ -49,10 +53,19 @@ export const productSchema = z.object({
   unitEn: z.string().trim().min(1).max(60),
   imageUrl,
   imagePublicId,
-  featuredOrder: z.coerce.number().int().min(0).max(100000).default(0),
+  featured: z.boolean().default(false),
 });
 
 export const productUpdateSchema = productSchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, "Envie ao menos um campo para atualizar.");
+
+export const productCategoryCreateSchema = z.object({
+  namePt: z.string().trim().min(2).max(120),
+  nameEn: z.string().trim().min(2).max(120),
+});
+
+export const productCategoryUpdateSchema = productCategoryCreateSchema
   .partial()
   .refine((value) => Object.keys(value).length > 0, "Envie ao menos um campo para atualizar.");
 

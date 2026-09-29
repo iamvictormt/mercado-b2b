@@ -2,14 +2,19 @@
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { ProductGrid, StoreFooter, StoreHeader, useStoreLocale } from "@/components/storefront";
+import {
+  ProductGrid,
+  StoreFooter,
+  StoreHeader,
+  type StorefrontViewer,
+  useStoreLocale,
+} from "@/components/storefront";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SelectField } from "@/components/ui/select";
-import { categoryNames, type Product, type ProductCategory } from "@/lib/products";
+import type { Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
-type Category = "all" | ProductCategory;
 type Sort = "featured" | "low" | "high";
 const copy = {
   pt: {
@@ -34,10 +39,16 @@ const copy = {
   },
 };
 
-export default function CatalogPage({ products }: { products: Product[] }) {
+export default function CatalogPage({
+  products,
+  viewer,
+}: {
+  products: Product[];
+  viewer: StorefrontViewer | null;
+}) {
   const { locale, changeLocale } = useStoreLocale();
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<Category>("all");
+  const [category, setCategory] = useState("all");
   const [sort, setSort] = useState<Sort>("featured");
   const t = copy[locale];
   const visible = useMemo(
@@ -52,13 +63,22 @@ export default function CatalogPage({ products }: { products: Product[] }) {
             ? a.price - b.price
             : sort === "high"
               ? b.price - a.price
-              : b.featured - a.featured,
+              : Number(b.featured) - Number(a.featured),
         ),
     [category, locale, products, query, sort],
   );
+  const categories = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          products.map((product) => [product.category, product.categoryName[locale]]),
+        ).entries(),
+      ),
+    [locale, products],
+  );
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <StoreHeader locale={locale} onLocaleChange={changeLocale} />
+      <StoreHeader locale={locale} onLocaleChange={changeLocale} viewer={viewer} />
       <section className="border-b border-border bg-store-paper px-5 pb-12 pt-36 sm:px-10 lg:px-16">
         <div className="mx-auto max-w-[1500px] px-5 sm:px-10 lg:px-16">
           <p className="mb-4 text-[10px] font-medium uppercase tracking-[.28em] text-muted-foreground">
@@ -80,23 +100,29 @@ export default function CatalogPage({ products }: { products: Product[] }) {
           />
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div className="flex flex-wrap gap-x-6 gap-y-3">
-              {(["all", "office", "print", "agro", "business", "other"] as Category[]).map(
-                (k, i) => (
-                  <Button
-                    key={k}
-                    variant="ghost"
-                    onClick={() => setCategory(k)}
-                    className={cn(
-                      "h-auto rounded-none border-b border-transparent px-0 pb-1 text-[10px] uppercase tracking-widest hover:bg-transparent",
-                      category === k && "border-foreground",
-                    )}
-                  >
-                    {k === "all"
-                      ? t.all
-                      : `${String.fromCharCode(64 + i)}. ${categoryNames[k][locale]}`}
-                  </Button>
-                ),
-              )}
+              <Button
+                variant="ghost"
+                onClick={() => setCategory("all")}
+                className={cn(
+                  "h-auto rounded-none border-b border-transparent px-0 pb-1 text-[10px] uppercase tracking-widest hover:bg-transparent",
+                  category === "all" && "border-foreground",
+                )}
+              >
+                {t.all}
+              </Button>
+              {categories.map(([slug, name], index) => (
+                <Button
+                  key={slug}
+                  variant="ghost"
+                  onClick={() => setCategory(slug)}
+                  className={cn(
+                    "h-auto rounded-none border-b border-transparent px-0 pb-1 text-[10px] uppercase tracking-widest hover:bg-transparent",
+                    category === slug && "border-foreground",
+                  )}
+                >
+                  {`${String.fromCharCode(65 + index)}. ${name}`}
+                </Button>
+              ))}
             </div>
             <SelectField
               value={sort}
@@ -111,7 +137,7 @@ export default function CatalogPage({ products }: { products: Product[] }) {
           </div>
         </div>
         {visible.length ? (
-          <ProductGrid items={visible} locale={locale} />
+          <ProductGrid items={visible} locale={locale} viewer={viewer} />
         ) : (
           <div className="grid min-h-64 place-items-center border-y border-border text-sm text-muted-foreground">
             {t.noResults}

@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 const favoriteSchema = z.object({ productId: z.string().uuid() });
 
 export async function GET() {
-  const auth = await requireApiUser();
+  const auth = await requireApiUser("CUSTOMER");
   if (!auth.ok) return auth.response;
 
   try {
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   const originError = validateMutationOrigin(request);
   if (originError) return originError;
 
-  const auth = await requireApiUser();
+  const auth = await requireApiUser("CUSTOMER");
   if (!auth.ok) return auth.response;
 
   try {

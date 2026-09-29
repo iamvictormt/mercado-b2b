@@ -160,6 +160,10 @@
     letter-spacing: 0;
   }
 
+  button {
+    cursor: pointer;
+  }
+
   html {
     scroll-behavior: smooth;
   }

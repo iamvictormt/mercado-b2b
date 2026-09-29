@@ -11,7 +11,7 @@ import {
   validateMutationOrigin,
 } from "@/server/api";
 import { publicProductSelect } from "@/server/repositories/products";
-import { productCategories, productSchema } from "@/server/schemas";
+import { productSchema } from "@/server/schemas";
 import { getCurrentUser } from "@/server/auth";
 
 export const runtime = "nodejs";
@@ -27,13 +27,13 @@ export async function GET(request: Request) {
     const canManage = user?.role === "ADMIN" && (scope === "manage" || scope === "all");
     const canSeeArchived = user?.role === "ADMIN" && scope === "all";
 
-    if (category && !productCategories.includes(category as (typeof productCategories)[number])) {
+    if (category && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(category)) {
       return apiError("Categoria de produto inválida.", 400);
     }
 
     const where: Prisma.ProductWhereInput = {
       ...(canSeeArchived ? {} : canManage ? { status: { not: "ARCHIVED" } } : { status: "ACTIVE" }),
-      ...(category ? { category: category as (typeof productCategories)[number] } : {}),
+      ...(category ? { categorySlug: category } : {}),
       ...(search
         ? {
             OR: [
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
         descriptionEn: input.descriptionEn,
         detailPt: nullableText(input.detailPt) ?? null,
         detailEn: nullableText(input.detailEn) ?? null,
-        category: input.category,
+        category: { connect: { slug: input.categorySlug } },
         status: input.status,
         price: input.price.toFixed(2),
         currency: input.currency,
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
         unitEn: input.unitEn,
         imageUrl: nullableText(input.imageUrl) ?? null,
         imagePublicId: nullableText(input.imagePublicId) ?? null,
-        featuredOrder: input.featuredOrder,
+        featuredOrder: input.featured ? 1 : 0,
       },
       select: { ...publicProductSelect, status: true },
     });
@@ -118,6 +118,9 @@ export async function POST(request: Request) {
   } catch (error) {
     if (hasErrorCode(error, "P2002")) {
       return apiError("Já existe um produto com este slug.", 409);
+    }
+    if (hasErrorCode(error, "P2025") || hasErrorCode(error, "P2003")) {
+      return apiError("A categoria selecionada já não existe.", 400);
     }
     console.error("Falha ao criar produto", error);
     return apiError("Não foi possível criar o produto.", 500);

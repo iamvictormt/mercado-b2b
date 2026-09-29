@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { ProductGrid, StoreFooter, StoreHeader, useStoreLocale } from "@/components/storefront";
+import {
+  ProductGrid,
+  StoreFooter,
+  StoreHeader,
+  type StorefrontViewer,
+  useStoreLocale,
+} from "@/components/storefront";
 import { Button } from "@/components/ui/button";
 import type { Product } from "@/lib/products";
 
@@ -18,6 +24,7 @@ const copy = {
     find: "Encontra-me uma máquina",
     featured: "Destaques",
     collection: "Escolhidos para o seu negócio",
+    emptyFeatured: "Selecione produtos em destaque no painel administrativo.",
     all: "Explorar todo o catálogo",
     services: [
       ["Fornecedores internacionais", "China, Índia, Europa e Médio Oriente"],
@@ -35,6 +42,7 @@ const copy = {
     find: "Find me a machine",
     featured: "Featured",
     collection: "Selected for your business",
+    emptyFeatured: "Choose featured products in the administration panel.",
     all: "Explore the full catalogue",
     services: [
       ["International suppliers", "China, India, Europe and Middle East"],
@@ -44,13 +52,20 @@ const copy = {
   },
 };
 
-export default function Storefront({ products }: { products: Product[] }) {
+export default function Storefront({
+  products,
+  viewer,
+}: {
+  products: Product[];
+  viewer: StorefrontViewer | null;
+}) {
   const { locale, changeLocale } = useStoreLocale();
   const t = copy[locale];
-  const featured = [...products].sort((a, b) => b.featured - a.featured);
+  const featured = products.filter((product) => product.featured).slice(0, 6);
+  const heroProduct = featured[0] ?? products[0];
   return (
     <main className="min-h-screen overflow-x-hidden bg-background text-foreground">
-      <StoreHeader locale={locale} onLocaleChange={changeLocale} />
+      <StoreHeader locale={locale} onLocaleChange={changeLocale} viewer={viewer} />
       <section className="relative bg-store-paper pt-20">
         <div className="mx-auto grid max-w-[1500px] items-center px-5 py-12 sm:px-10 lg:min-h-[min(720px,calc(100vh-5rem))] lg:grid-cols-[.9fr_1.1fr] lg:px-16">
           <div className="relative z-10 max-w-xl py-10">
@@ -87,10 +102,10 @@ export default function Storefront({ products }: { products: Product[] }) {
           </div>
           <div className="relative flex min-h-[300px] items-center justify-center lg:h-[65vh]">
             {/* <div className="absolute inset-[8%] rounded-full bg-store-mint" /> */}
-            {products[0] ? (
+            {heroProduct ? (
               <img
-                src={products[0].image.src}
-                alt={products[0].name[locale]}
+                src={heroProduct.image.src}
+                alt={heroProduct.name[locale]}
                 width={1024}
                 height={1024}
                 className="relative h-full max-h-[600px] w-full object-contain mix-blend-multiply"
@@ -134,12 +149,10 @@ export default function Storefront({ products }: { products: Product[] }) {
           </Button>
         </div>
         {featured.length ? (
-          <ProductGrid items={featured} locale={locale} />
+          <ProductGrid items={featured} locale={locale} viewer={viewer} />
         ) : (
           <div className="grid min-h-56 place-items-center border-y border-border text-sm text-muted-foreground">
-            {locale === "pt"
-              ? "Ainda não existem produtos ativos no catálogo."
-              : "There are no active products in the catalogue yet."}
+            {t.emptyFeatured}
           </div>
         )}
         <div className="mt-16 text-center">

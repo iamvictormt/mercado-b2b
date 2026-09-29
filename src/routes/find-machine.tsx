@@ -1,10 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { ArrowRight, CheckCircle2, ImagePlus, LoaderCircle, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { StoreFooter, StoreHeader, useStoreLocale } from "@/components/storefront";
+import {
+  StoreFooter,
+  StoreHeader,
+  type StorefrontViewer,
+  useStoreLocale,
+} from "@/components/storefront";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MaskedInput, maskFormatters } from "@/components/ui/input";
@@ -33,6 +39,7 @@ const copy = {
     deadlinePh: "Selecionar data",
     send: "Enviar pedido",
     sending: "A enviar pedido...",
+    adminAction: "Ver pedidos no painel",
     note: "O pedido não representa compromisso de compra. Entraremos em contacto antes de qualquer pagamento.",
     login: "Inicie sessão para enviar um pedido de pesquisa.",
     success: "Pedido enviado com sucesso.",
@@ -63,6 +70,7 @@ const copy = {
     deadlinePh: "Select date",
     send: "Send request",
     sending: "Sending request...",
+    adminAction: "View requests in dashboard",
     note: "This request is not a purchase commitment. We will contact you before any payment.",
     login: "Sign in to send a sourcing request.",
     success: "Request sent successfully.",
@@ -84,7 +92,7 @@ function parseMoney(value: string) {
   return Number(value.replaceAll(" ", "").replace(",", "."));
 }
 
-export default function FindMachinePage() {
+export default function FindMachinePage({ viewer }: { viewer: StorefrontViewer | null }) {
   const { locale, changeLocale } = useStoreLocale();
   const t = copy[locale];
   const [request, setRequest] = useState({ description: "", quantity: "", budget: "" });
@@ -115,6 +123,10 @@ export default function FindMachinePage() {
 
   const sendRequest = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (viewer?.role === "ADMIN") {
+      toast.info(t.adminAction);
+      return;
+    }
     setSending(true);
 
     try {
@@ -167,7 +179,7 @@ export default function FindMachinePage() {
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-background text-foreground">
-      <StoreHeader locale={locale} onLocaleChange={changeLocale} />
+      <StoreHeader locale={locale} onLocaleChange={changeLocale} viewer={viewer} />
 
       <section className="relative overflow-hidden border-b border-border bg-store-paper pb-20 pt-36 lg:pb-24">
         <div className="absolute -right-40 top-0 size-[620px] rounded-full border border-border/70 bg-store-mint/70" />
@@ -312,14 +324,25 @@ export default function FindMachinePage() {
               <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
               {t.note}
             </p>
-            <Button
-              type="submit"
-              disabled={sending}
-              className="h-13 shrink-0 rounded-none px-7 text-[10px] uppercase tracking-[.18em]"
-            >
-              {sending ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}
-              {sending ? t.sending : t.send}
-            </Button>
+            {viewer?.role === "ADMIN" ? (
+              <Button
+                asChild
+                className="h-13 shrink-0 rounded-none px-7 text-[10px] uppercase tracking-[.18em]"
+              >
+                <Link href="/admin/sourcing">
+                  <ArrowRight /> {t.adminAction}
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={sending}
+                className="h-13 shrink-0 rounded-none px-7 text-[10px] uppercase tracking-[.18em]"
+              >
+                {sending ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}
+                {sending ? t.sending : t.send}
+              </Button>
+            )}
           </div>
         </form>
       </section>

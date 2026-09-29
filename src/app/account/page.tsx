@@ -1,21 +1,21 @@
-import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import AccountPage from "@/routes/account";
-import { getCurrentUser } from "@/server/auth";
-
-export const metadata: Metadata = {
-  title: "Minha conta",
-  description: "Acompanhe as suas cotações, dados da empresa e favoritos no Mercado B2B.",
-  openGraph: {
-    title: "Minha conta — Mercado B2B",
-    description: "Cotações, dados da empresa e favoritos da sua conta Mercado B2B.",
-  },
+const legacyTabs: Record<string, string> = {
+  quotes: "/account/quotes",
+  sourcing: "/account/sourcing",
+  profile: "/account/company",
+  favorites: "/account/favorites",
 };
 
-export default async function Page() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/auth?next=/account");
-
-  return <AccountPage />;
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; next?: string }>;
+}) {
+  const { tab, next } = await searchParams;
+  const destination = (tab && legacyTabs[tab]) || "/account/quotes";
+  const safeNext = next?.startsWith("/") && !next.startsWith("//") ? next : null;
+  const query =
+    destination === "/account/company" && safeNext ? `?next=${encodeURIComponent(safeNext)}` : "";
+  redirect(`${destination}${query}`);
 }

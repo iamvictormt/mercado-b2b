@@ -7,7 +7,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 
 const SESSION_COOKIE = "mercado_session";
-const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+const SESSION_DURATION_MS = 60 * 60 * 1000;
 const SCRYPT_KEY_LENGTH = 64;
 const scrypt = promisify(scryptCallback);
 
@@ -32,11 +32,16 @@ function hashSessionToken(token: string) {
 
 export async function createUserSession(userId: string) {
   const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + SESSION_DURATION_MS);
+  const oldestValidSession = new Date(now.getTime() - SESSION_DURATION_MS);
 
   await prisma.$transaction([
     prisma.authSession.deleteMany({
-      where: { userId, expiresAt: { lte: new Date() } },
+      where: {
+        userId,
+        OR: [{ expiresAt: { lte: now } }, { createdAt: { lte: oldestValidSession } }],
+      },
     }),
     prisma.authSession.create({
       data: { userId, tokenHash: hashSessionToken(token), expiresAt },
@@ -85,8 +90,11 @@ export async function getCurrentUser() {
     where: {
       tokenHash: hashSessionToken(token),
       expiresAt: { gt: new Date() },
+      createdAt: { gt: new Date(Date.now() - SESSION_DURATION_MS) },
     },
     select: {
+      createdAt: true,
+      expiresAt: true,
       user: {
         select: {
           id: true,
@@ -101,10 +109,38 @@ export async function getCurrentUser() {
     },
   });
 
-  return session?.user ?? null;
+  if (!session) return null;
+  const absoluteExpiry = session.createdAt.getTime() + SESSION_DURATION_MS;
+  const sessionExpiresAt = new Date(Math.min(session.expiresAt.getTime(), absoluteExpiry));
+  return { ...session.user, sessionExpiresAt: sessionExpiresAt.toISOString() };
+}
+
+export async function getStorefrontViewer() {
+  const user = await getCurrentUser();
+  return user
+    ? {
+        name: user.name,
+        role: user.role,
+        companyName: user.company?.name ?? null,
+        sessionExpiresAt: user.sessionExpiresAt,
+      }
+    : null;
 }
 
 export function isSameOrigin(request: Request) {
   const origin = request.headers.get("origin");
-  return !origin || origin === new URL(request.url).origin;
+  if (!origin) return true;
+
+  try {
+    const originUrl = new URL(origin);
+    const requestUrl = new URL(request.url);
+    const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+    const host = forwardedHost || request.headers.get("host") || requestUrl.host;
+    const forwardedProtocol = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    const protocol = forwardedProtocol ? `${forwardedProtocol}:` : requestUrl.protocol;
+
+    return originUrl.host === host && originUrl.protocol === protocol;
+  } catch {
+    return false;
+  }
 }

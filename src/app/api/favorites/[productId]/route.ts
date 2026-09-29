@@ -9,7 +9,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
   const originError = validateMutationOrigin(request);
   if (originError) return originError;
 
-  const auth = await requireApiUser();
+  const auth = await requireApiUser("CUSTOMER");
   if (!auth.ok) return auth.response;
 
   try {
