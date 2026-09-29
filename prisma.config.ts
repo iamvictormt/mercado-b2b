@@ -7,6 +7,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: env("DATABASE_URL"),
+    // A aplicação usa a URL com pool no runtime. A CLI prefere a ligação
+    // direta para migrações, quando ela estiver configurada.
+    url: process.env["DIRECT_URL"] ?? env("DATABASE_URL"),
   },
 });

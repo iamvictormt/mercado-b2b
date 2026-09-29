@@ -15,10 +15,10 @@ npm run dev
 
 O backend usa Prisma ORM 7 com o driver PostgreSQL `pg`. Não há SDK, autenticação ou cliente browser de terceiros ligado ao banco; o acesso acontece apenas no servidor através de `src/lib/prisma.ts`.
 
-O host atual apresenta uma cadeia de certificado autoassinada neste ambiente. Por isso, `DATABASE_SSL_REJECT_UNAUTHORIZED=false` mantém a ligação cifrada por TLS sem exigir uma CA local. Remova essa opção ou defina `true` em ambientes que ofereçam uma cadeia pública válida.
+Em produção serverless, `DATABASE_URL` deve apontar para o **Transaction pooler** do Supabase (porta `6543` e `pgbouncer=true`). A ligação direta `db.[project-ref].supabase.co:5432` usa IPv6 por padrão e deve ficar em `DIRECT_URL` para comandos da CLI e migrações executados num ambiente com IPv6. O cliente limita cada instância serverless a uma ligação por padrão; `DATABASE_POOL_MAX` permite alterar esse limite quando necessário.
 
 1. Copie `.env.example` para `.env`.
-2. Substitua `CHANGE_ME` pela senha do PostgreSQL codificada para URL.
+2. Substitua `CHANGE_ME` pela senha do PostgreSQL codificada para URL e `POOLER_HOST` pelo host exato exibido em **Supabase → Connect → Transaction pooler**.
 3. Valide e crie a primeira migração:
 
 ```bash
@@ -33,6 +33,12 @@ npm run db:deploy
 ```
 
 O esquema inicial em `prisma/schema.prisma` inclui empresas, utilizadores, produtos, cotações, itens de cotação, pedidos de pesquisa e favoritos.
+
+### Deploy na Vercel
+
+Configure `DATABASE_URL` nos ambientes Production, Preview e Development com a URL **Transaction pooler** copiada do painel do Supabase. Depois de salvar a variável, faça um novo deploy. Não use a URL direta `db.[project-ref].supabase.co` como `DATABASE_URL` na Vercel.
+
+`DIRECT_URL` só é necessária no ambiente em que serão executadas as migrações. Mantenha `DATABASE_SSL_REJECT_UNAUTHORIZED=true` em produção; use `false` apenas como exceção local quando a máquina não reconhecer a cadeia do certificado.
 
 ## Imagens
 
