@@ -62,7 +62,7 @@ As páginas `/account` e `/admin` exigem sessão. O painel administrativo també
 | Método                  | Rota                         | Acesso                       |
 | ----------------------- | ---------------------------- | ---------------------------- |
 | GET, POST               | `/api/products`              | público / administrador      |
-| GET, PATCH, DELETE      | `/api/products/:id-ou-slug`  | público / administrador      |
+| GET, PATCH, DELETE      | `/api/products/:id`          | público / administrador      |
 | GET, POST               | `/api/favorites`             | utilizador autenticado       |
 | DELETE                  | `/api/favorites/:productId`  | utilizador autenticado       |
 | GET, PUT                | `/api/account/company`       | utilizador autenticado       |
@@ -74,7 +74,7 @@ As páginas `/account` e `/admin` exigem sessão. O painel administrativo també
 | GET, PATCH              | `/api/sourcing-requests/:id` | proprietário / administrador |
 | POST (`multipart/form`) | `/api/uploads/cloudinary`    | utilizador autenticado       |
 
-`DELETE /api/products/:id-ou-slug` remove o produto e a respetiva imagem. Os itens de cotações anteriores mantêm o nome e o preço guardados no momento do pedido.
+`DELETE /api/products/:id` remove o produto e a respetiva imagem. Os itens de cotações anteriores mantêm o nome e o preço guardados no momento do pedido.
 
 ## Comandos
 

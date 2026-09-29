@@ -108,8 +108,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     }
     revalidatePath("/");
     revalidatePath("/catalog");
-    revalidatePath(`/product/${existing.slug}`);
-    revalidatePath(`/product/${product.slug}`);
+    revalidatePath(`/product/${existing.id}`);
     return Response.json({ product });
   } catch (error) {
     if (hasErrorCode(error, "P2002")) {
@@ -143,7 +142,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     }
     revalidatePath("/");
     revalidatePath("/catalog");
-    revalidatePath(`/product/${existing.slug}`);
+    revalidatePath(`/product/${existing.id}`);
     return new Response(null, { status: 204 });
   } catch (error) {
     console.error("Falha ao arquivar produto", error);

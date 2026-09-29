@@ -74,9 +74,9 @@ export function listActiveProducts() {
   });
 }
 
-export function getActiveProductBySlug(slug: string) {
+export function getActiveProductById(id: string) {
   return prisma.product.findFirst({
-    where: { slug, status: "ACTIVE" },
+    where: { id, status: "ACTIVE" },
     select: publicProductSelect,
   });
 }

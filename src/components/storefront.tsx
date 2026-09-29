@@ -154,7 +154,7 @@ export function ProductGrid({ items, locale }: { items: Product[]; locale: Store
       {items.map((p, i) => (
         <article key={p.id} className="group flex flex-col">
           <Link
-            href={`/product/${p.slug}`}
+            href={`/product/${p.id}`}
             className="relative block aspect-[4/5] overflow-hidden bg-card"
           >
             <img
@@ -171,7 +171,7 @@ export function ProductGrid({ items, locale }: { items: Product[]; locale: Store
           </Link>
           <div className="mt-5 flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <Link href={`/product/${p.slug}`} className="text-sm font-medium hover:opacity-50">
+              <Link href={`/product/${p.id}`} className="text-sm font-medium hover:opacity-50">
                 {p.name[locale]}
               </Link>
               <p className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">

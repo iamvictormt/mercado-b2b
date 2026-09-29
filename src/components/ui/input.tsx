@@ -15,7 +15,11 @@ export const maskFormatters = {
     const decimals = decimalParts.join("").slice(0, 2);
     return normalized.includes(",") ? `${integer},${decimals}` : integer;
   },
-  currency: (value: string) => value.replace(/[^a-z]/gi, "").toUpperCase().slice(0, 3),
+  currency: (value: string) =>
+    value
+      .replace(/[^a-z]/gi, "")
+      .toUpperCase()
+      .slice(0, 3),
   stpPhone: (value: string) => {
     const digits = value.replace(/\D/g, "").slice(0, 7);
     return digits.replace(/(\d{3})(\d{0,4})/, (_, first: string, rest: string) =>

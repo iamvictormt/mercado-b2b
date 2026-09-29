@@ -229,7 +229,7 @@ export default function AccountPage() {
                           it.product && (
                             <Link
                               key={it.product.id}
-                              href={`/product/${it.product.slug}`}
+                              href={`/product/${it.product.id}`}
                               className="flex items-center gap-3 rounded bg-store-mint/60 p-2 pr-4 text-sm"
                             >
                               <img
@@ -325,7 +325,7 @@ export default function AccountPage() {
                   p && (
                     <Link
                       key={p.id}
-                      href={`/product/${p.slug}`}
+                      href={`/product/${p.id}`}
                       className="group rounded border border-border bg-card p-4"
                     >
                       <div className="relative aspect-square overflow-hidden rounded bg-store-mint">

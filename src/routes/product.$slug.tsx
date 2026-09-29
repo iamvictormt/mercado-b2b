@@ -1,191 +1,283 @@
 "use client";
 
-import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
+  CheckCircle2,
   Clock,
   Globe2,
+  LoaderCircle,
   Minus,
   Package,
   Plus,
-  UserRound,
 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { StoreFooter, StoreHeader, useStoreLocale } from "@/components/storefront";
 import { Button } from "@/components/ui/button";
-import { formatMoney, type Product, type StoreLocale } from "@/lib/products";
-import { cn } from "@/lib/utils";
+import { formatMoney, type Product } from "@/lib/products";
+
+const copy = {
+  pt: {
+    back: "Voltar ao catálogo",
+    overline: "Equipamento selecionado",
+    indicative: "Preço indicativo",
+    per: "por",
+    origin: "Origem",
+    lead: "Prazo estimado",
+    min: "Encomenda mínima",
+    quantity: "Quantidade pretendida",
+    quote: "Pedir cotação",
+    requesting: "A enviar pedido...",
+    total: "Total indicativo",
+    note: "Transporte, alfândega e condições finais são confirmados na cotação.",
+    supply: "Ficha de fornecimento",
+    supplyIntro: "Informação essencial para planear a sua compra empresarial.",
+    direct: "Fornecimento internacional",
+    directNote: "Selecionamos e validamos o fornecedor antes da encomenda.",
+    transparent: "Cotação transparente",
+    transparentNote: "Recebe o custo final para aprovação antes do pagamento.",
+    delivered: "Entrega em São Tomé",
+    deliveredNote: "Acompanhamos transporte, documentação e desalfandegamento.",
+    login: "Inicie sessão para pedir uma cotação.",
+    success: "Pedido de cotação criado com sucesso.",
+  },
+  en: {
+    back: "Back to catalogue",
+    overline: "Selected equipment",
+    indicative: "Indicative price",
+    per: "per",
+    origin: "Origin",
+    lead: "Estimated lead time",
+    min: "Minimum order",
+    quantity: "Required quantity",
+    quote: "Request a quote",
+    requesting: "Sending request...",
+    total: "Indicative total",
+    note: "Shipping, customs and final terms are confirmed in the quote.",
+    supply: "Supply overview",
+    supplyIntro: "Essential information to plan your business purchase.",
+    direct: "International sourcing",
+    directNote: "We select and validate the supplier before the order.",
+    transparent: "Transparent quotation",
+    transparentNote: "You receive the final cost for approval before payment.",
+    delivered: "Delivery in São Tomé",
+    deliveredNote: "We manage shipping, documentation and customs clearance.",
+    login: "Sign in to request a quote.",
+    success: "Quote request created successfully.",
+  },
+};
+
+async function responseError(response: Response) {
+  const body = (await response.json().catch(() => null)) as { error?: string } | null;
+  return body?.error ?? "Não foi possível concluir o pedido.";
+}
 
 export default function ProductPage({ product }: { product: Product }) {
-  const [locale, setLocale] = useState<StoreLocale>("pt");
+  const { locale, changeLocale } = useStoreLocale();
   const [quantity, setQuantity] = useState(product.minQty);
-  const t =
-    locale === "pt"
-      ? {
-          back: "Voltar ao catálogo",
-          indicative: "Preço indicativo por",
-          origin: "Origem",
-          lead: "Prazo estimado",
-          min: "Quantidade mínima",
-          quantity: "Quantidade",
-          quote: "Pedir cotação",
-          total: "Total indicativo",
-          note: "O preço final, transporte e alfândega são confirmados na cotação.",
-          pending: "As cotações serão adicionadas em breve.",
-        }
-      : {
-          back: "Back to catalogue",
-          indicative: "Indicative price per",
-          origin: "Origin",
-          lead: "Estimated lead time",
-          min: "Minimum quantity",
-          quantity: "Quantity",
-          quote: "Request quote",
-          total: "Indicative total",
-          note: "Final price, shipping and customs are confirmed in the quote.",
-          pending: "Quotes will be connected to the new database in the next step.",
-        };
-  const money = (v: number) => formatMoney(v, locale, product.currency);
-  const quote = () => toast.info(t.pending);
+  const [requesting, setRequesting] = useState(false);
+  const t = copy[locale];
+  const money = (value: number) => formatMoney(value, locale, product.currency);
+
+  const requestQuote = async () => {
+    setRequesting(true);
+    try {
+      const response = await fetch("/api/quotes", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ items: [{ productId: product.id, quantity }] }),
+      });
+
+      if (response.status === 401) throw new Error(t.login);
+      if (!response.ok) throw new Error(await responseError(response));
+      toast.success(t.success);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível pedir a cotação.");
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const supplyItems = [
+    { number: "01", title: t.direct, note: t.directNote },
+    { number: "02", title: t.transparent, note: t.transparentNote },
+    { number: "03", title: t.delivered, note: t.deliveredNote },
+  ];
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background/90 backdrop-blur-md">
-        <div className="mx-auto flex h-20 max-w-[1500px] items-center px-5 sm:px-10 lg:px-16">
-          <Link href="/" className="flex items-baseline gap-2">
-            <span className="font-display text-2xl italic">Mercado</span>
-            <span className="text-sm font-semibold tracking-widest">B2B</span>
-            <span className="size-1 rounded-full bg-primary" />
-          </Link>
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocale("pt")}
-              className={cn(locale !== "pt" && "text-muted-foreground")}
-            >
-              PT
-            </Button>
-            <span className="text-border">/</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocale("en")}
-              className={cn(locale !== "en" && "text-muted-foreground")}
-            >
-              EN
-            </Button>
-            <Button asChild variant="ghost" size="icon">
-              <Link
-                href="/auth"
-                aria-label={locale === "pt" ? "Entrar ou criar conta" : "Sign in or create account"}
-              >
-                <UserRound className="size-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </header>
+    <main className="min-h-screen overflow-x-hidden bg-background text-foreground">
+      <StoreHeader locale={locale} onLocaleChange={changeLocale} />
 
-      <section className="grid min-h-screen pt-20 lg:grid-cols-[1.08fr_.92fr]">
-        <div className="relative flex min-h-[55vh] items-center justify-center overflow-hidden bg-store-paper p-8 sm:p-14 lg:min-h-[calc(100vh-5rem)]">
-          <Link
-            href="/catalog"
-            className="absolute left-6 top-7 z-10 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest sm:left-10"
-          >
-            <ArrowLeft className="size-4" />
-            {t.back}
-          </Link>
-          <div className="absolute size-[70%] rounded-full bg-store-mint" />
-          <img
-            src={product.image.src}
-            alt={product.name[locale]}
-            width={1024}
-            height={1024}
-            className="relative max-h-[72vh] w-full object-contain mix-blend-multiply"
-          />
-        </div>
-        <div className="flex items-center bg-card px-7 py-16 sm:px-14 lg:px-20">
-          <div className="w-full max-w-lg">
-            <p className="mb-5 inline-flex bg-foreground px-3 py-1 text-[9px] font-semibold uppercase tracking-widest text-background">
-              {product.categoryName[locale]}
-            </p>
-            <h1 className="text-4xl font-light leading-tight sm:text-5xl">
-              {product.name[locale]}
-            </h1>
-            <p className="mt-6 text-[10px] uppercase tracking-widest text-muted-foreground">
-              {t.indicative} {product.unit[locale]}
-            </p>
-            <p className="font-display text-4xl italic">{money(product.price)}</p>
-            <p className="mt-8 max-w-md text-sm leading-7 text-muted-foreground">
-              {product.description[locale]}
-            </p>
-            <dl className="mt-8 grid grid-cols-3 gap-4 border-y border-border py-5 text-xs">
-              <div>
-                <dt className="flex items-center gap-1 text-muted-foreground">
-                  <Globe2 className="size-3.5" />
-                  {t.origin}
-                </dt>
-                <dd className="mt-1 font-medium">{product.origin[locale]}</dd>
-              </div>
-              <div>
-                <dt className="flex items-center gap-1 text-muted-foreground">
-                  <Clock className="size-3.5" />
-                  {t.lead}
-                </dt>
-                <dd className="mt-1 font-medium">{product.leadTime[locale]}</dd>
-              </div>
-              <div>
-                <dt className="flex items-center gap-1 text-muted-foreground">
-                  <Package className="size-3.5" />
-                  {t.min}
-                </dt>
-                <dd className="mt-1 font-medium">
-                  {product.minQty} {product.unit[locale]}
-                </dd>
-              </div>
-            </dl>
-            <p className="mb-3 mt-8 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              {t.quantity}
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <div className="flex h-12 items-center border border-border">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setQuantity((v) => Math.max(product.minQty, v - 1))}
-                  aria-label="-"
-                >
-                  <Minus />
-                </Button>
-                <span className="w-10 text-center text-sm">{quantity}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setQuantity((v) => v + 1)}
-                  aria-label="+"
-                >
-                  <Plus />
-                </Button>
-              </div>
-              <Button
-                onClick={quote}
-                className="h-12 flex-1 rounded-none bg-foreground text-background hover:bg-foreground/90"
-              >
-                {t.quote}
-                <ArrowRight />
-              </Button>
+      <section className="border-b border-border bg-store-paper pt-20 lg:bg-card">
+        <div className="mx-auto grid min-h-[calc(100vh-5rem)] max-w-[1500px] lg:grid-cols-[1.08fr_.92fr]">
+          <div className="relative flex min-h-[58vh] items-center justify-center bg-store-paper px-6 pb-14 pt-24 before:absolute before:inset-y-0 before:right-full before:w-screen before:bg-store-paper sm:px-12 lg:min-h-[calc(100vh-5rem)] lg:px-16">
+            <Link
+              href="/catalog"
+              className="absolute left-6 top-7 z-20 flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[.18em] transition-opacity hover:opacity-50 sm:left-12 lg:left-16"
+            >
+              <ArrowLeft className="size-4" />
+              {t.back}
+            </Link>
+
+            <div className="absolute left-6 top-20 hidden text-[9px] uppercase tracking-[.26em] text-muted-foreground sm:block lg:left-16">
+              {String(product.featured).padStart(2, "0")} / {product.categoryName[locale]}
             </div>
-            <p className="mt-4 text-[11px] text-muted-foreground">
-              {t.total}:{" "}
-              <strong className="text-foreground">{money(product.price * quantity)}</strong> ·{" "}
-              {t.note}
+            <div className="absolute size-[76%] max-h-[680px] max-w-[680px] rounded-full border border-border/70 bg-store-mint/70" />
+            <div className="absolute inset-y-0 left-1/2 w-px bg-border/50" />
+            <div className="absolute inset-x-0 top-1/2 h-px bg-border/50" />
+            <img
+              src={product.image.src}
+              alt={product.name[locale]}
+              width={1200}
+              height={1200}
+              className="relative z-10 max-h-[68vh] w-full max-w-3xl object-contain drop-shadow-[0_35px_45px_rgba(24,48,43,.13)]"
+            />
+            <p className="absolute bottom-7 right-6 z-10 text-[9px] uppercase tracking-[.24em] text-muted-foreground sm:right-12 lg:right-16">
+              Mercado B2B · São Tomé
             </p>
+          </div>
+
+          <div className="relative flex items-center bg-card px-6 py-14 after:absolute after:inset-y-0 after:left-full after:w-screen after:bg-card sm:px-12 lg:px-16 xl:px-20">
+            <div className="w-full max-w-xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="bg-foreground px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[.18em] text-background">
+                  {product.categoryName[locale]}
+                </span>
+                <span className="text-[9px] font-medium uppercase tracking-[.22em] text-muted-foreground">
+                  {t.overline}
+                </span>
+              </div>
+
+              <h1 className="mt-7 max-w-xl text-4xl font-light leading-[1.02] sm:text-5xl xl:text-6xl">
+                {product.name[locale]}
+              </h1>
+              {product.detail[locale] && (
+                <p className="mt-4 text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">
+                  {product.detail[locale]}
+                </p>
+              )}
+
+              <div className="mt-9 flex flex-wrap items-end justify-between gap-4 border-y border-border py-6">
+                <div>
+                  <p className="text-[9px] uppercase tracking-[.2em] text-muted-foreground">
+                    {t.indicative} · {t.per} {product.unit[locale]}
+                  </p>
+                  <p className="mt-1 font-display text-5xl italic">{money(product.price)}</p>
+                </div>
+                <span className="max-w-44 text-right text-[10px] leading-5 text-muted-foreground">
+                  {t.note}
+                </span>
+              </div>
+
+              <p className="mt-7 max-w-lg text-sm leading-7 text-muted-foreground">
+                {product.description[locale]}
+              </p>
+
+              <dl className="mt-8 grid grid-cols-3 border-y border-border text-xs">
+                <div className="border-r border-border py-5 pr-4">
+                  <dt className="flex items-center gap-1.5 text-muted-foreground">
+                    <Globe2 className="size-3.5" /> {t.origin}
+                  </dt>
+                  <dd className="mt-2 font-medium">{product.origin[locale]}</dd>
+                </div>
+                <div className="border-r border-border px-4 py-5">
+                  <dt className="flex items-center gap-1.5 text-muted-foreground">
+                    <Clock className="size-3.5" /> {t.lead}
+                  </dt>
+                  <dd className="mt-2 font-medium">{product.leadTime[locale]}</dd>
+                </div>
+                <div className="py-5 pl-4">
+                  <dt className="flex items-center gap-1.5 text-muted-foreground">
+                    <Package className="size-3.5" /> {t.min}
+                  </dt>
+                  <dd className="mt-2 font-medium">
+                    {product.minQty} {product.unit[locale]}
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="mt-8">
+                <p className="mb-3 text-[10px] font-semibold uppercase tracking-[.18em] text-muted-foreground">
+                  {t.quantity}
+                </p>
+                <div className="grid gap-3 sm:grid-cols-[144px_minmax(0,1fr)]">
+                  <div className="flex h-13 items-center justify-between border border-border bg-background">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setQuantity((value) => Math.max(product.minQty, value - 1))}
+                      aria-label={locale === "pt" ? "Diminuir quantidade" : "Decrease quantity"}
+                    >
+                      <Minus />
+                    </Button>
+                    <span className="min-w-10 text-center font-display text-xl italic">
+                      {quantity}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setQuantity((value) => value + 1)}
+                      aria-label={locale === "pt" ? "Aumentar quantidade" : "Increase quantity"}
+                    >
+                      <Plus />
+                    </Button>
+                  </div>
+                  <Button
+                    onClick={() => void requestQuote()}
+                    disabled={requesting}
+                    className="h-13 rounded-none text-[10px] uppercase tracking-[.18em]"
+                  >
+                    {requesting ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}
+                    {requesting ? t.requesting : t.quote}
+                  </Button>
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-4 text-xs">
+                  <span className="text-muted-foreground">{t.total}</span>
+                  <strong className="font-display text-2xl font-normal italic">
+                    {money(product.price * quantity)}
+                  </strong>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
+
+      <section className="mx-auto max-w-[1500px] px-5 py-20 sm:px-10 lg:px-16 lg:py-24">
+        <div className="grid gap-10 lg:grid-cols-[.72fr_1.28fr]">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-[.28em] text-muted-foreground">
+              {t.supply}
+            </p>
+            <h2 className="mt-4 max-w-sm font-display text-4xl italic sm:text-5xl">
+              {t.supplyIntro}
+            </h2>
+          </div>
+          <div className="border-t border-border">
+            {supplyItems.map((item) => (
+              <article
+                key={item.number}
+                className="grid gap-4 border-b border-border py-7 sm:grid-cols-[64px_1fr_1.2fr] sm:items-start"
+              >
+                <span className="font-display text-2xl italic text-muted-foreground">
+                  {item.number}
+                </span>
+                <h3 className="text-sm font-medium">{item.title}</h3>
+                <p className="text-sm leading-6 text-muted-foreground">{item.note}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+        <div className="mt-14 flex items-center gap-3 border-t border-border pt-6 text-xs text-muted-foreground">
+          <CheckCircle2 className="size-4 text-primary" />
+          {t.note}
+        </div>
+      </section>
+
+      <StoreFooter locale={locale} />
     </main>
   );
 }
