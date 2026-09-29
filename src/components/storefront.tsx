@@ -18,7 +18,7 @@ export const storeCopy = {
     lead: "Prazo estimado",
     min: "Qtd. mínima",
     quote: "Pedir cotação",
-    quotePending: "As cotações serão ligadas ao novo banco na próxima etapa.",
+    quotePending: "As cotações serão adicionadas em breve.",
     footer: "Plataforma de compras empresariais · São Tomé e Príncipe",
   },
   en: {

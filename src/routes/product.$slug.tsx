@@ -33,7 +33,7 @@ export default function ProductPage({ product }: { product: Product }) {
           quote: "Pedir cotação",
           total: "Total indicativo",
           note: "O preço final, transporte e alfândega são confirmados na cotação.",
-          pending: "As cotações serão ligadas ao novo banco na próxima etapa.",
+          pending: "As cotações serão adicionadas em breve.",
         }
       : {
           back: "Back to catalogue",
